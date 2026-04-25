@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOFREE // TERMINAL DE CONTRIBUCIONES</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+
+<canvas id="bg-canvas"></canvas>
+<div class="tooltip" id="tooltip"></div>
+
+<div class="app">
+
+  <header class="header">
+    <div class="header-left">
+      <div class="logo-mark">SF</div>
+      <div>
+        <div class="header-title">Sofree // Terminal de Contribuciones</div>
+        <div class="header-subtitle">NODE_ENV=PRODUCCIÓN &nbsp;·&nbsp; CLUSTER_ID=SF-ALFA-7</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="gh-search">
+        <input class="gh-input" id="gh-input" type="text" placeholder="usuario de github…" />
+        <button class="gh-btn" id="gh-btn">CARGAR</button>
+        <span class="gh-err" id="gh-err" style="display:none"></span>
+      </div>
+      <div class="status-dot"></div>
+      <div class="status-text" id="live-label">CARGANDO</div>
+      <div class="sys-time" id="sys-time">--:--:--</div>
+      <div class="avatar" id="header-avatar">--</div>
+    </div>
+  </header>
+
+  <div class="bento">
+
+    <!-- IDENTIDAD -->
+    <div class="card c-identity" style="animation-delay:0.05s">
+      <div class="card-label">Identidad</div>
+      <div class="identity-avatar">AK</div>
+      <div class="identity-name">Aditya Kumar</div>
+      <div class="identity-handle">@aditya.k</div>
+      <div class="identity-tags">
+        <span class="tag">Rust</span>
+        <span class="tag">Sistemas</span>
+        <span class="tag">OSS</span>
+        <span class="tag">CLI</span>
+      </div>
+      <div class="identity-bar">
+        <div class="bar-label"><span>NIVEL 42 · ARQUITECTO</span><span id="xp-pct">78%</span></div>
+        <div class="bar-track"><div class="bar-fill" id="xp-bar" style="width:0%"></div></div>
+      </div>
+      <div class="xp-value" id="xp-val">0</div>
+      <div class="xp-sub">XP DE CONTRIBUCIÓN ESTE CICLO</div>
+    </div>
+
+    <!-- ESTADÍSTICAS -->
+    <div class="c-stats-row" style="align-content:start;">
+      <div class="stat-card" style="animation-delay:0.1s">
+        <div class="stat-card-accent" style="background:var(--accent)"></div>
+        <div class="stat-label">Confirmaciones</div>
+        <div class="stat-num" style="color:var(--accent)" id="s-commits">0</div>
+        <svg class="sparkline" width="80" height="26" id="sp-commits"></svg>
+        <div class="stat-delta delta-up">↑ 12.4% vs ciclo anterior</div>
+      </div>
+      <div class="stat-card" style="animation-delay:0.13s">
+        <div class="stat-card-accent" style="background:var(--accent3)"></div>
+        <div class="stat-label">PRs Fusionadas</div>
+        <div class="stat-num" style="color:var(--accent3)" id="s-prs">0</div>
+        <svg class="sparkline" width="80" height="26" id="sp-prs"></svg>
+        <div class="stat-delta delta-up">↑ 8.1% vs ciclo anterior</div>
+      </div>
+      <div class="stat-card" style="animation-delay:0.16s">
+        <div class="stat-card-accent" style="background:var(--accent2)"></div>
+        <div class="stat-label">Problemas Cerrados</div>
+        <div class="stat-num" style="color:var(--accent2)" id="s-issues">0</div>
+        <svg class="sparkline" width="80" height="26" id="sp-issues"></svg>
+        <div class="stat-delta delta-down">↓ 2.3% vs ciclo anterior</div>
+      </div>
+      <div class="stat-card" style="animation-delay:0.19s">
+        <div class="stat-card-accent" style="background:var(--warn)"></div>
+        <div class="stat-label">Puntuación de Impacto</div>
+        <div class="stat-num" style="color:var(--warn)" id="s-impact">0</div>
+        <svg class="sparkline" width="80" height="26" id="sp-impact"></svg>
+        <div class="stat-delta delta-up">↑ 31.7% histórico</div>
+      </div>
+    </div>
+
+    <!-- MAPA DE CALOR -->
+    <div class="card c-heatmap" style="animation-delay:0.22s">
+      <div class="card-label">Gráfico de Contribuciones · 52 Semanas</div>
+      <div id="heatmap-container"></div>
+      <div class="heatmap-stats">
+        <div class="heatmap-stat"><div class="heatmap-stat-num" id="hm-total">0</div><div class="heatmap-stat-label">Total Contribuciones</div></div>
+        <div class="heatmap-stat"><div class="heatmap-stat-num" id="hm-streak">0</div><div class="heatmap-stat-label">Racha de Días</div></div>
+        <div class="heatmap-stat"><div class="heatmap-stat-num" id="hm-peak">0</div><div class="heatmap-stat-label">Día Pico</div></div>
+        <div class="heatmap-stat"><div class="heatmap-stat-num" id="hm-active">0</div><div class="heatmap-stat-label">Días Activos</div></div>
+      </div>
+    </div>
+
+    <!-- CLASIFICACIÓN -->
+    <div class="card c-rank" style="animation-delay:0.25s">
+      <div class="card-label">Clasificación · Este Ciclo</div>
+      <div id="rank-list"></div>
+    </div>
+
+    <!-- PROYECTOS -->
+    <div class="card c-projects" style="animation-delay:0.28s">
+      <div class="card-label">Proyectos Activos</div>
+      <div class="filter-bar" id="filter-bar">
+        <button class="filter-btn active" data-filter="all">TODOS</button>
+        <button class="filter-btn" data-filter="active">ACTIVOS</button>
+        <button class="filter-btn" data-filter="rust">RUST</button>
+        <button class="filter-btn" data-filter="go">GO</button>
+        <button class="filter-btn" data-filter="ts">TS</button>
+      </div>
+      <div id="projects-list"></div>
+    </div>
+
+    <!-- FLUJO DE ACTIVIDAD -->
+    <div class="card c-feed" style="animation-delay:0.31s">
+      <div class="card-label">Flujo de Actividad</div>
+      <div id="activity-feed" style="max-height:340px;overflow-y:auto;"></div>
+    </div>
+
+    <!-- CONTRIBUIR -->
+    <div class="card c-contribute" style="animation-delay:0.34s">
+      <div class="card-label">Contribuir al Proyecto · Open Source</div>
+      <div class="contribute-grid">
+
+        <div class="contribute-manifesto">
+          <div class="manifesto-quote">"Talk is cheap. Show me the code."</div>
+          <div class="manifesto-author">— Linus Torvalds</div>
+          <div class="manifesto-title">Sofree es libre.<br>Sofree es tuyo.</div>
+          <p class="manifesto-body">
+            Este proyecto nació para visualizar y celebrar las contribuciones open source.
+            Lo publicamos con la misma filosofía: cualquiera puede leerlo, mejorarlo y redistribuirlo.
+            Forkealo, rompelo, mejoralo — eso es exactamente lo que queremos.
+          </p>
+          <div class="contribute-actions">
+            <a class="contribute-gh-btn" href="https://github.com/sofree-oss/sofree" target="_blank" rel="noopener">
+              ⬡ &nbsp;Ver en GitHub
+            </a>
+            <div class="contribute-license-badge">MIT</div>
+          </div>
+        </div>
+
+        <div class="contribute-steps">
+          <div class="steps-title">// Cómo contribuir</div>
+          <div class="step">
+            <div class="step-num">01</div>
+            <div class="step-body">
+              <div class="step-cmd">git clone github.com/sofree-oss/sofree</div>
+              <div class="step-desc">Cloná el repositorio en tu máquina</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">02</div>
+            <div class="step-body">
+              <div class="step-cmd">git checkout -b feature/mi-idea</div>
+              <div class="step-desc">Creá una rama para tu cambio</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">03</div>
+            <div class="step-body">
+              <div class="step-cmd">git commit -m "feat: descripción"</div>
+              <div class="step-desc">Commiteá con un mensaje claro</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">04</div>
+            <div class="step-body">
+              <div class="step-cmd">gh pr create --title "Mi mejora"</div>
+              <div class="step-desc">Abrí un Pull Request — revisamos todo</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="contribute-oss">
+          <div class="steps-title">// También podés contribuir a otros proyectos</div>
+          <p class="oss-body">
+            Sofree te muestra proyectos reales en GitHub. Buscá un usuario o proyecto que te interese,
+            explorá su actividad y empezá a contribuir. El open source crece con cada commit.
+          </p>
+          <div class="oss-tags">
+            <span class="tag">Python</span>
+            <span class="tag">Flask</span>
+            <span class="tag">JavaScript</span>
+            <span class="tag">GitHub API</span>
+            <span class="tag">n8n</span>
+            <span class="tag">Open Source</span>
+          </div>
+          <div class="oss-stat-row">
+            <div class="oss-stat"><span class="oss-stat-num">∞</span><span class="oss-stat-label">Proyectos libres</span></div>
+            <div class="oss-stat"><span class="oss-stat-num">0€</span><span class="oss-stat-label">Costo de contribuir</span></div>
+            <div class="oss-stat"><span class="oss-stat-num">1</span><span class="oss-stat-label">PR para empezar</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- IMPACTO -->
+    <div class="card c-impact" style="animation-delay:0.37s">
+      <div class="card-label">Desglose de Contribuciones</div>
+      <div class="donut-wrap">
+        <svg width="140" height="140" viewBox="0 0 140 140" id="donut-svg">
+          <circle cx="70" cy="70" r="52" fill="none" stroke="var(--surface)" stroke-width="14"/>
+        </svg>
+      </div>
+      <div class="impact-legend" id="impact-legend"></div>
+    </div>
+
+    <!-- PROYECTOS OSS PARA CONTRIBUIR -->
+    <div class="card c-oss-projects" style="animation-delay:0.4s">
+      <div class="card-label">Proyectos Open Source · Empezá a Contribuir</div>
+      <div class="oss-proj-filters" id="oss-proj-filters">
+        <button class="oss-f-btn active" data-f="all">TODOS</button>
+        <button class="oss-f-btn" data-f="beginner">PRINCIPIANTE</button>
+        <button class="oss-f-btn" data-f="intermediate">INTERMEDIO</button>
+        <button class="oss-f-btn" data-f="advanced">AVANZADO</button>
+        <div class="oss-f-sep"></div>
+        <button class="oss-f-btn" data-f="js">JavaScript</button>
+        <button class="oss-f-btn" data-f="python">Python</button>
+        <button class="oss-f-btn" data-f="rust">Rust</button>
+        <button class="oss-f-btn" data-f="go">Go</button>
+      </div>
+      <div class="oss-proj-grid" id="oss-proj-grid"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── OSS GUIDE DRAWER ── -->
+<div id="oss-overlay"></div>
+<div id="oss-guide-drawer">
+  <div class="guide-header">
+    <div class="guide-proj-info">
+      <div class="guide-proj-name" id="guide-proj-name"></div>
+      <div class="guide-proj-meta" id="guide-proj-meta"></div>
+    </div>
+    <button class="guide-close" id="guide-close">✕</button>
+  </div>
+  <div class="guide-tabs">
+    <button class="guide-tab active" data-tab="contribute">Contribuir</button>
+    <button class="guide-tab" data-tab="use">Usar el Proyecto</button>
+    <button class="guide-tab" data-tab="bug">Reportar Bug</button>
+  </div>
+  <div class="guide-body" id="guide-body"></div>
+  <div class="guide-links" id="guide-links"></div>
+</div>
+
+<!-- ── CHATBOT ── -->
+<button id="chat-btn" title="OSS Advisor">
+  ⬡
+  <span class="chat-badge"></span>
+</button>
+
+<div id="chat-panel">
+
+  <div class="chat-header">
+    <div class="chat-header-icon">⬡</div>
+    <div>
+      <div class="chat-title">OSS Advisor</div>
+      <div class="chat-subtitle">Herramientas open source · impulsado por n8n</div>
+    </div>
+    <button class="chat-close" id="chat-close">✕</button>
+  </div>
+
+  <div class="chat-messages" id="chat-messages"></div>
+
+  <div class="chat-suggestions" id="chat-suggestions">
+    <button class="sug-btn" data-q="¿Qué librerías open source hay para hacer login/auth?">🔐 Login / Auth</button>
+    <button class="sug-btn" data-q="¿Qué herramientas open source existen para pagos en línea?">💳 Pagos</button>
+    <button class="sug-btn" data-q="¿Qué bases de datos open source recomiendas para apps web?">🗄 Bases de datos</button>
+    <button class="sug-btn" data-q="¿Qué opciones open source hay para enviar emails?">📧 Email</button>
+    <button class="sug-btn" data-q="¿Qué librerías open source hay para gráficas y visualización de datos?">📊 Gráficas</button>
+    <button class="sug-btn" data-q="¿Qué herramientas open source hay para búsqueda full-text?">🔍 Búsqueda</button>
+  </div>
+
+  <div class="chat-input-bar">
+    <input class="chat-input" id="chat-input" type="text"
+      placeholder="¿Qué función necesitas implementar?" autocomplete="off" />
+    <button class="chat-send" id="chat-send">ENVIAR</button>
+  </div>
+
+</div>
+
+<!-- TWEAKS -->
+<div id="tweaks-panel">
+  <div class="tweaks-title">// Ajustes</div>
+  <div class="tweak-row">
+    <div class="tweak-label">Color de Acento</div>
+    <div class="tweak-color-row">
+      <div class="tweak-swatch sel" style="background:#38bdf8" data-accent="#38bdf8" title="Cielo"></div>
+      <div class="tweak-swatch" style="background:#a78bfa" data-accent="#a78bfa" title="Violeta"></div>
+      <div class="tweak-swatch" style="background:#34d399" data-accent="#34d399" title="Esmeralda"></div>
+      <div class="tweak-swatch" style="background:#fb7185" data-accent="#fb7185" title="Rosa"></div>
+      <div class="tweak-swatch" style="background:#fbbf24" data-accent="#fbbf24" title="Ámbar"></div>
+    </div>
+  </div>
+  <div class="tweak-row">
+    <div class="tweak-label">Densidad</div>
+    <div class="tweak-options">
+      <button class="tweak-opt" data-density="compact">COMPACTO</button>
+      <button class="tweak-opt sel" data-density="normal">NORMAL</button>
+      <button class="tweak-opt" data-density="spacious">AMPLIO</button>
+    </div>
+  </div>
+  <div class="tweak-row">
+    <div class="tweak-label">Lluvia de Código</div>
+    <div class="tweak-options">
+      <button class="tweak-opt sel" data-rain="on">SÍ</button>
+      <button class="tweak-opt" data-rain="off">NO</button>
+    </div>
+  </div>
+  <div class="tweak-row">
+    <div class="tweak-label">Animaciones</div>
+    <div class="tweak-options">
+      <button class="tweak-opt sel" data-anim="on">SÍ</button>
+      <button class="tweak-opt" data-anim="off">NO</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── LOADING SCREEN ── -->
+<div id="loading-screen" class="hidden">
+  <div class="loading-content">
+    <div class="loading-logo">SF</div>
+    <div class="loading-target" id="loading-username">@username</div>
+    <div class="loading-bar-wrap">
+      <div class="loading-bar-track">
+        <div class="loading-bar-fill"></div>
+      </div>
+      <div class="loading-scan"></div>
+    </div>
+    <div class="loading-status" id="loading-status">Conectando con GitHub...</div>
+    <div class="loading-dots"><span></span><span></span><span></span></div>
+  </div>
+</div>
+
+<!-- ── WELCOME SCREEN ── -->
+<div id="welcome-screen">
+  <div class="welcome-content">
+    <div class="welcome-logo-wrap">
+      <div class="welcome-logo">SF</div>
+    </div>
+    <div class="welcome-title">SOFREE</div>
+    <div class="welcome-subtitle">Terminal de Contribuciones Open Source</div>
+    <p class="welcome-desc">Explorá el impacto real de cualquier desarrollador en GitHub.<br>Commits, PRs, issues, heatmap y más — en tiempo real.</p>
+
+    <div class="welcome-search-row">
+      <input id="welcome-input" class="welcome-input" type="text"
+        placeholder="ingresá un usuario de github…" autocomplete="off" spellcheck="false" />
+      <button id="welcome-btn" class="welcome-btn">EXPLORAR</button>
+    </div>
+
+    <div class="welcome-sugs">
+      <span class="welcome-sugs-label">o probá con</span>
+      <button class="welcome-sug" data-user="torvalds">torvalds</button>
+      <button class="welcome-sug" data-user="gvanrossum">gvanrossum</button>
+      <button class="welcome-sug" data-user="antirez">antirez</button>
+      <button class="welcome-sug" data-user="yyx990803">yyx990803</button>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

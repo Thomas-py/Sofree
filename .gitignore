@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Env
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# n8n workflow (contiene URL del webhook — no subir si es sensible)
+# sofree-flask/n8n-workflow-oss-advisor.json

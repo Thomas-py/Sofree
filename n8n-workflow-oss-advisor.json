@@ -1,0 +1,216 @@
+{
+  "name": "Sofree — OSS Advisor Chatbot",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "oss-advisor",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrae el cuerpo de la petición\n// n8n puede colocar el JSON en $json directamente o en $json.body\nconst raw = $input.first().json;\nconst body = (raw.body && typeof raw.body === 'object') ? raw.body : raw;\n\nconst message = (body.message || '').trim();\nconst sessionId = body.sessionId || ('session-' + Date.now());\nconst language  = body.language  || 'es';\n\nif (!message) throw new Error('El campo message está vacío');\n\nconst systemPrompt = [\n  'Eres OSS Advisor, un experto en herramientas de software open source (OSS).',\n  'Cuando el usuario describa una necesidad técnica, recomienda las mejores librerías o proyectos OSS para resolverla.',\n  '',\n  'REGLAS:',\n  '1. Responde ÚNICAMENTE con JSON válido — sin texto extra, sin bloques markdown, sin ```json.',\n  '2. El JSON debe tener exactamente esta estructura:',\n  '{',\n  '  \"reply\": \"texto de respuesta en español (2-3 oraciones, amigable y directo)\",',\n  '  \"tools\": [',\n  '    {',\n  '      \"name\": \"Nombre de la herramienta\",',\n  '      \"description\": \"Descripción breve en español (máx 90 caracteres)\",',\n  '      \"repo\": \"https://github.com/owner/repo\",',\n  '      \"tags\": [\"tag1\", \"tag2\", \"tag3\"]',\n  '    }',\n  '  ]',\n  '}',\n  '3. Incluye entre 2 y 5 herramientas, ordenadas de más a menos recomendada.',\n  '4. Solo incluye proyectos reales con repositorios reales en GitHub.',\n  '5. Si la pregunta no es sobre tecnología o herramientas, responde igual con reply explicando que solo ayudas con OSS, y tools: [].',\n].join('\\n');\n\nreturn [{ json: { message, sessionId, language, systemPrompt } }];"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000002",
+      "name": "Preparar Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ model: 'gpt-4o-mini', max_tokens: 1024, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: $json.systemPrompt }, { role: 'user', content: $json.message }] }) }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          }
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000003",
+      "name": "Consultar OpenAI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "REEMPLAZAR_CON_ID_CREDENCIAL",
+          "name": "OpenAI API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.first().json;\n\n// Extraer el texto de la respuesta de OpenAI\n// OpenAI devuelve: choices[0].message.content\n// Con response_format: json_object, el contenido ya es JSON válido\nlet rawText = '';\ntry {\n  rawText = resp.choices?.[0]?.message?.content || '';\n} catch (e) {\n  rawText = '';\n}\n\nlet parsed;\ntry {\n  parsed = JSON.parse(rawText);\n} catch (e) {\n  // Fallback: devolver el texto crudo como reply sin tools\n  parsed = {\n    reply: rawText || 'No pude generar una respuesta. Por favor reformulá tu pregunta.',\n    tools: []\n  };\n}\n\n// Sanitizar y normalizar la respuesta\nconst tools = Array.isArray(parsed.tools)\n  ? parsed.tools.map(t => ({\n      name:        String(t.name        || 'Herramienta'),\n      description: String(t.description || ''),\n      repo:        String(t.repo        || ''),\n      tags:        Array.isArray(t.tags) ? t.tags.map(String) : []\n    }))\n  : [];\n\nreturn [{ json: {\n  reply: String(parsed.reply || ''),\n  tools\n}}];"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000004",
+      "name": "Parsear Respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000005",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Rama de error: devuelve un mensaje amigable al frontend\nconst err = $input.first().json;\nreturn [{ json: {\n  reply: '❌ Error interno del servidor. Por favor intentá de nuevo en unos segundos.',\n  tools: [],\n  error: err.message || 'Unknown error'\n}}];"
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000006",
+      "name": "Manejar Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 480]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000007",
+      "name": "Responder Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 480]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Preparar Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Prompt": {
+      "main": [
+        [
+          {
+            "node": "Consultar OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Parsear Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Manejar Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parsear Respuesta": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manejar Error": {
+      "main": [
+        [
+          {
+            "node": "Responder Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "sofree" },
+    { "name": "chatbot" },
+    { "name": "oss-advisor" }
+  ],
+  "pinData": {},
+  "versionId": "1"
+}
